@@ -1,210 +1,130 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/database_helper.dart';
-import 'product.dart';  // Updated import to the new Product class
+import 'clothing_item.dart';
+import 'database_helper.dart';
 
 void main() {
-  // ProductDatabaseHelper handles database init per platform, no FFI init here
-  runApp(const FashionStoreApp());
+  runApp(const ClothingStoreApp());
 }
 
-class FashionStoreApp extends StatelessWidget {
-  const FashionStoreApp({super.key});
+class ClothingStoreApp extends StatelessWidget {
+  const ClothingStoreApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Fashion Store',
+      title: 'Clothing Store',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.pink,  // Changed to pink for a fashion-themed color scheme
-        scaffoldBackgroundColor: Colors.grey[50],  // Light background for elegance
+        primarySwatch: Colors.blueGrey,
+        scaffoldBackgroundColor: Colors.grey[100],
         appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.pink,
+          backgroundColor: Colors.blueGrey,
           foregroundColor: Colors.white,
         ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.pinkAccent,
-            foregroundColor: Colors.white,
-          ),
-        ),
-        cardTheme: CardThemeData(  // Fixed: Changed CardTheme to CardThemeData
-          elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
       ),
-      home: const ProductCatalogScreen(),
+      home: const ClothingCatalogScreen(),
     );
   }
 }
 
-class ProductCatalogScreen extends StatefulWidget {
-  const ProductCatalogScreen({super.key});
+class ClothingCatalogScreen extends StatefulWidget {
+  const ClothingCatalogScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
-  _ProductCatalogScreenState createState() => _ProductCatalogScreenState();
+  State<ClothingCatalogScreen> createState() => _ClothingCatalogScreenState();
 }
 
-class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
+class _ClothingCatalogScreenState extends State<ClothingCatalogScreen> {
   final _nameController = TextEditingController();
   final _categoryController = TextEditingController();
-  final _priceController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _imageUrlController = TextEditingController();
+  final _brandController = TextEditingController();
+  final _sizeController = TextEditingController();
 
-  List<Product> _products = [];
-  double _averagePrice = 0.0;
+  List<ClothingItem> _clothingList = [];
 
   @override
   void initState() {
     super.initState();
-    _loadProducts();
+    _loadClothing();
   }
 
-  void _loadProducts() async {
-    try {
-      final data = await ProductDatabaseHelper.instance.getAllProducts();
-      double total = 0;
-      for (var p in data) {
-        total += p.price;
-      }
-      if (!mounted) return;
-      setState(() {
-        _products = data;
-        _averagePrice = data.isNotEmpty ? total / data.length : 0.0;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("❌ Error loading products: $e")),
-      );
-    }
+  void _loadClothing() async {
+    final data = await ClothingDatabaseHelper.instance.getAllClothing();
+    if (!mounted) return;
+    setState(() => _clothingList = data);
   }
 
-  void _addProduct() async {
+  void _addClothing() async {
     if (_nameController.text.isEmpty ||
         _categoryController.text.isEmpty ||
-        _priceController.text.isEmpty ||
-        _descriptionController.text.isEmpty ||
-        _imageUrlController.text.isEmpty) {
-      if (!mounted) return;
+        _brandController.text.isEmpty ||
+        _sizeController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("⚠️ Please fill all fields")),
+        const SnackBar(content: Text("Please fill all fields")),
       );
       return;
     }
-    try {
-      final newProduct = Product(
-        name: _nameController.text.trim(),
-        category: _categoryController.text.trim(),
-        price: double.tryParse(_priceController.text) ?? 0.0,
-        description: _descriptionController.text.trim(),
-        imageUrl: _imageUrlController.text.trim(),
-      );
 
-      await ProductDatabaseHelper.instance.insertProduct(newProduct);
-      if (!mounted) return;
+    final item = ClothingItem(
+      name: _nameController.text.trim(),
+      category: _categoryController.text.trim(),
+      brand: _brandController.text.trim(),
+      size: _sizeController.text.trim(),
+    );
 
-      _clearFields();
-      _loadProducts();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ Product added successfully!")),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      debugPrint('Error in _addProduct: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("❌ Error adding product: $e")),
-      );
-    }
+    await ClothingDatabaseHelper.instance.insertClothing(item);
+    _clearFields();
+    _loadClothing();
   }
 
   void _clearFields() {
     _nameController.clear();
     _categoryController.clear();
-    _priceController.clear();
-    _descriptionController.clear();
-    _imageUrlController.clear();
+    _brandController.clear();
+    _sizeController.clear();
   }
 
-  void _deleteProduct(int id) async {
-    try {
-      await ProductDatabaseHelper.instance.deleteProduct(id);
-      if (!mounted) return;
-      _loadProducts();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("🗑️ Product deleted")),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("❌ Error deleting product: $e")),
-      );
-    }
+  void _deleteClothing(int id) async {
+    await ClothingDatabaseHelper.instance.deleteClothing(id);
+    _loadClothing();
   }
 
-  void _updateProduct(Product product) async {
-    _nameController.text = product.name;
-    _categoryController.text = product.category;
-    _priceController.text = product.price.toString();
-    _descriptionController.text = product.description;
-    _imageUrlController.text = product.imageUrl;
+  void _updateClothing(ClothingItem item) {
+    _nameController.text = item.name;
+    _categoryController.text = item.category;
+    _brandController.text = item.brand;
+    _sizeController.text = item.size;
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Update Product"),
+        title: const Text("Update Clothing Item"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: "Product Name")),
-            TextField(
-                controller: _categoryController,
-                decoration: const InputDecoration(labelText: "Category")),
-            TextField(
-                controller: _priceController,
-                decoration: const InputDecoration(labelText: "Price"),
-                keyboardType: TextInputType.number),
-            TextField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(labelText: "Description")),
-            TextField(
-                controller: _imageUrlController,
-                decoration: const InputDecoration(labelText: "Image URL")),
+            TextField(controller: _nameController, decoration: const InputDecoration(labelText: "Name")),
+            TextField(controller: _categoryController, decoration: const InputDecoration(labelText: "Category")),
+            TextField(controller: _brandController, decoration: const InputDecoration(labelText: "Brand")),
+            TextField(controller: _sizeController, decoration: const InputDecoration(labelText: "Size")),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () async {
-              try {
-                final updatedProduct = Product(
-                  id: product.id,
-                  name: _nameController.text.trim(),
-                  category: _categoryController.text.trim(),
-                  price: double.tryParse(_priceController.text) ?? 0.0,
-                  description: _descriptionController.text.trim(),
-                  imageUrl: _imageUrlController.text.trim(),
-                );
-                await ProductDatabaseHelper.instance.updateProduct(updatedProduct);
-                if (!mounted) return;
-                _clearFields();
-                Navigator.pop(context);
-                _loadProducts();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("✏️ Product updated successfully!")),
-                );
-              } catch (e) {
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("❌ Error updating product: $e")),
-                );
-              }
+              final updated = ClothingItem(
+                id: item.id,
+                name: _nameController.text.trim(),
+                category: _categoryController.text.trim(),
+                brand: _brandController.text.trim(),
+                size: _sizeController.text.trim(),
+              );
+              await ClothingDatabaseHelper.instance.updateClothing(updated);
+              Navigator.pop(context);
+              _clearFields();
+              _loadClothing();
             },
             child: const Text("Save"),
-          )
+          ),
         ],
       ),
     );
@@ -213,50 +133,35 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("🛍️ Fashion Store Catalog")),
+      appBar: AppBar(title: const Text("Clothing Store Inventory")),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: "Product Name")),
-            TextField(
-                controller: _categoryController,
-                decoration: const InputDecoration(labelText: "Category")),
-            TextField(
-                controller: _priceController,
-                decoration: const InputDecoration(labelText: "Price"),
-                keyboardType: TextInputType.number),
-            TextField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(labelText: "Description")),
-            TextField(
-                controller: _imageUrlController,
-                decoration: const InputDecoration(labelText: "Image URL")),
+            TextField(controller: _nameController, decoration: const InputDecoration(labelText: "Name")),
+            TextField(controller: _categoryController, decoration: const InputDecoration(labelText: "Category")),
+            TextField(controller: _brandController, decoration: const InputDecoration(labelText: "Brand")),
+            TextField(controller: _sizeController, decoration: const InputDecoration(labelText: "Size")),
             const SizedBox(height: 10),
-            ElevatedButton(onPressed: _addProduct, child: const Text("Add Product")),
+            ElevatedButton(onPressed: _addClothing, child: const Text("Add Clothing")),
             const SizedBox(height: 10),
             Expanded(
               child: ListView.builder(
-                itemCount: _products.length,
+                itemCount: _clothingList.length,
                 itemBuilder: (context, index) {
-                  final product = _products[index];
+                  final item = _clothingList[index];
                   return Card(
                     child: ListTile(
-                      leading: product.imageUrl.isNotEmpty
-                          ? Image.network(product.imageUrl, width: 50, height: 50, fit: BoxFit.cover)
-                          : const Icon(Icons.image, size: 50),
-                      title: Text("${product.name} - ${product.category}"),
-                      subtitle: Text("Price: \$${product.price.toStringAsFixed(2)}\n${product.description}"),
+                      title: Text("${item.name} - ${item.brand}"),
+                      subtitle: Text("Category: ${item.category} | Size: ${item.size}"),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                              onPressed: () => _updateProduct(product),
+                              onPressed: () => _updateClothing(item),
                               icon: const Icon(Icons.edit, color: Colors.blue)),
                           IconButton(
-                              onPressed: () => _deleteProduct(product.id!),
+                              onPressed: () => _deleteClothing(item.id!),
                               icon: const Icon(Icons.delete, color: Colors.red)),
                         ],
                       ),
@@ -264,14 +169,6 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                   );
                 },
               ),
-            ),
-            const Divider(thickness: 1),
-            Text(
-              "📊 Average Price: \$${_averagePrice.toStringAsFixed(2)}",
-              style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.pink),
             ),
           ],
         ),
